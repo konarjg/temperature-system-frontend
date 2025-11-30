@@ -1,0 +1,8 @@
+generatorName: dart-dio
+inputSpec: temperature_system_api.json
+outputDir: lib/api
+additionalProperties:
+  pubName: temperature_api
+  pubAuthor: "Krzysztof Konarski"
+  pubDescription: "Auto-generated client for Temperature System"
+  legacyDiscriminatorBehavior: false
