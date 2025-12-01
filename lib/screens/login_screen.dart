@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../config/app_colors.dart';
-import '../main_layout.dart'; // Navigation wrapper
+import '../providers/auth_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -10,88 +11,172 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  bool isRegister = false;
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController(); // NEW
+  
+  bool _isObscure = true;
+  bool _isRegistering = false; 
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Icon(Icons.thermostat, color: AppColors.primaryBlue, size: 64),
-              const SizedBox(height: 24),
-              Text(
-                isRegister ? "Create Account" : "Welcome Back",
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Icon(Icons.thermostat, color: AppColors.primaryBlue, size: 80),
+                  const SizedBox(height: 32),
+                  Text(
+                    _isRegistering ? "Create Account" : "Welcome Back",
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 48),
+                  
+                  // Email
+                  TextFormField(
+                    controller: _emailController,
+                    style: const TextStyle(color: AppColors.textPrimary),
+                    decoration: _inputDecoration("Email", Icons.email_outlined),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) return 'Please enter email';
+                      if (!value.contains('@')) return 'Invalid email';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Password
+                  TextFormField(
+                    controller: _passwordController,
+                    obscureText: _isObscure,
+                    style: const TextStyle(color: AppColors.textPrimary),
+                    decoration: _inputDecoration("Password", Icons.lock_outline).copyWith(
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _isObscure ? Icons.visibility_off : Icons.visibility,
+                          color: AppColors.textSecondary,
+                        ),
+                        onPressed: () => setState(() => _isObscure = !_isObscure),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) return 'Please enter password';
+                      if (_isRegistering && value.length < 6) return 'Password too short (min 6)';
+                      return null;
+                    },
+                  ),
+                  
+                  // Confirm Password (Only visible in Register mode)
+                  if (_isRegistering) ...[
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _confirmPasswordController,
+                      obscureText: _isObscure,
+                      style: const TextStyle(color: AppColors.textPrimary),
+                      decoration: _inputDecoration("Confirm Password", Icons.lock_clock_outlined),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) return 'Please confirm password';
+                        if (value != _passwordController.text) return 'Passwords do not match';
+                        return null;
+                      },
+                    ),
+                  ],
+
+                  const SizedBox(height: 32),
+                  
+                  SizedBox(
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: authProvider.isLoading ? null : () async {
+                        if (_formKey.currentState!.validate()) {
+                          bool success;
+                          if (_isRegistering) {
+                            success = await authProvider.register(
+                              _emailController.text, 
+                              _passwordController.text
+                            );
+                          } else {
+                            success = await authProvider.login(
+                              _emailController.text, 
+                              _passwordController.text
+                            );
+                          }
+
+                          if (!success && context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(_isRegistering ? 'Registration Failed' : 'Login Failed'), 
+                                backgroundColor: AppColors.error
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryBlue,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: authProvider.isLoading 
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : Text(_isRegistering ? "Register" : "Log In", style: const TextStyle(color: Colors.white, fontSize: 16)),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 16),
+                  
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _isRegistering = !_isRegistering;
+                        _formKey.currentState?.reset();
+                        _emailController.clear();
+                        _passwordController.clear();
+                        _confirmPasswordController.clear();
+                      });
+                    },
+                    child: Text(
+                      _isRegistering 
+                        ? "Already have an account? Log In" 
+                        : "Don't have an account? Register",
+                      style: const TextStyle(color: AppColors.textSecondary),
+                    ),
+                  )
+                ],
               ),
-              const SizedBox(height: 40),
-              _buildTextField("Email Address", Icons.email_outlined),
-              const SizedBox(height: 16),
-              _buildTextField("Password", Icons.lock_outline, isObscure: true),
-              const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: () {
-                  // Mock Login -> Go to App
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (_) => const MainLayout()),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryBlue,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                child: Text(isRegister ? "Register" : "Log In", style: const TextStyle(fontSize: 16)),
-              ),
-              const SizedBox(height: 16),
-              TextButton(
-                onPressed: () => setState(() => isRegister = !isRegister),
-                child: Text(
-                  isRegister ? "Already have an account? Log In" : "Don't have an account? Register",
-                  style: const TextStyle(color: AppColors.textSecondary),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildTextField(String label, IconData icon, {bool isObscure = false}) {
-    return TextField(
-      obscureText: isObscure,
-      style: const TextStyle(color: AppColors.textPrimary),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(color: AppColors.textSecondary),
-        prefixIcon: Icon(icon, color: AppColors.textSecondary),
-        filled: true,
-        fillColor: AppColors.cardSurface,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.primaryBlue),
-        ),
-      ),
+  InputDecoration _inputDecoration(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: const TextStyle(color: AppColors.textSecondary),
+      prefixIcon: Icon(icon, color: AppColors.textSecondary),
+      filled: true,
+      fillColor: AppColors.cardSurface,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primaryBlue)),
+      errorStyle: const TextStyle(color: AppColors.error),
     );
   }
 }

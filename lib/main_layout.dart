@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'config/app_colors.dart';
+import 'providers/auth_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/sensor_list_screen.dart';
+import 'screens/profile_screen.dart';
 
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key});
@@ -18,6 +21,7 @@ class _MainLayoutState extends State<MainLayout> {
     HomeScreen(),
     HistoryScreen(),
     SensorListScreen(),
+    ProfileScreen(),
   ];
 
   @override
@@ -27,15 +31,15 @@ class _MainLayoutState extends State<MainLayout> {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
-        automaticallyImplyLeading: false, // Hides the back button
+        automaticallyImplyLeading: false,
+        title: const Text("IoT Dashboard", style: TextStyle(color: AppColors.textPrimary, fontSize: 18)),
         actions: [
            Padding(
              padding: const EdgeInsets.only(right: 20.0),
              child: IconButton(
                icon: const Icon(Icons.logout, color: AppColors.textSecondary),
                onPressed: () {
-                 // Return to Login
-                 Navigator.of(context).pushReplacementNamed('/');
+                 Provider.of<AuthProvider>(context, listen: false).logout();
                },
              ),
            )
@@ -54,23 +58,14 @@ class _MainLayoutState extends State<MainLayout> {
         child: BottomNavigationBar(
           backgroundColor: AppColors.background,
           elevation: 0,
-          
-          // Colors
           selectedItemColor: AppColors.primaryBlue,
           unselectedItemColor: AppColors.textSecondary,
-          
-          // Navigation Logic
           currentIndex: _currentIndex,
           onTap: (index) => setState(() => _currentIndex = index),
-          
-          // Label Configuration
           type: BottomNavigationBarType.fixed,
-          showUnselectedLabels: true, // Always show labels
-          showSelectedLabels: true,
+          showUnselectedLabels: true,
           selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
           unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal, fontSize: 12),
-          
-          // Icons (Using standard Material Icons for compatibility)
           items: const [
             BottomNavigationBarItem(
               icon: Icon(Icons.home_outlined),
@@ -86,6 +81,11 @@ class _MainLayoutState extends State<MainLayout> {
               icon: Icon(Icons.settings_input_antenna), 
               activeIcon: Icon(Icons.settings_input_antenna_outlined),
               label: "Sensors",
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_outline), 
+              activeIcon: Icon(Icons.person),
+              label: "Profile",
             ),
           ],
         ),

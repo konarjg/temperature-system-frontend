@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import '../config/app_colors.dart';
-import '../config/mock_data.dart';
+import '../models/sensor_model.dart';
 
+// Fix 3: Removed Address display for security/cleanup
 class SensorCard extends StatelessWidget {
   final SensorModel sensor;
+  final VoidCallback? onDelete;
 
-  const SensorCard({super.key, required this.sensor});
+  const SensorCard({super.key, required this.sensor, this.onDelete});
 
   @override
   Widget build(BuildContext context) {
+    final isOnline = sensor.state == SensorState.Operational;
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -16,21 +20,20 @@ class SensorCard extends StatelessWidget {
         color: AppColors.cardSurface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: sensor.isOnline ? Colors.transparent : AppColors.error.withOpacity(0.3),
+          color: isOnline ? Colors.transparent : AppColors.error.withOpacity(0.3),
         ),
       ),
       child: Row(
         children: [
-          // Status Indicator
           Container(
             width: 12,
             height: 12,
             decoration: BoxDecoration(
-              color: sensor.isOnline ? Colors.green : AppColors.error,
+              color: isOnline ? Colors.green : AppColors.error,
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: (sensor.isOnline ? Colors.green : AppColors.error).withOpacity(0.4),
+                  color: (isOnline ? Colors.green : AppColors.error).withOpacity(0.4),
                   blurRadius: 6,
                   spreadRadius: 2,
                 )
@@ -43,7 +46,7 @@ class SensorCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  sensor.name,
+                  sensor.displayName ?? "Unknown Sensor",
                   style: const TextStyle(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.bold,
@@ -51,18 +54,17 @@ class SensorCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
+                // Replaced Address with Status Text
                 Text(
-                  sensor.address,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
+                  isOnline ? "Operational" : "Offline / Unavailable",
+                  style: TextStyle(
+                    color: isOnline ? AppColors.textSecondary : AppColors.error,
                     fontSize: 12,
-                    fontFamily: 'monospace',
                   ),
                 ),
               ],
             ),
           ),
-          const Icon(Icons.chevron_right, color: AppColors.textSecondary),
         ],
       ),
     );
