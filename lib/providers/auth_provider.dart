@@ -11,7 +11,7 @@ import '../services/signalr_service.dart';
 class AuthProvider extends ChangeNotifier {
   final ApiService _apiService;
   final UserRepository _userRepository;
-  final SignalRService _signalRService; 
+  final SignalRService _signalRService;
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
   
   bool _isLoading = false;
@@ -32,10 +32,7 @@ class AuthProvider extends ChangeNotifier {
     
     if (token != null && !JwtDecoder.isExpired(token)) {
       _isAuthenticated = true;
-      
-      // Start SignalR with the valid token
-      await _signalRService.start(token);
-
+      _signalRService.start();
       final userIdStr = await _storage.read(key: 'user_id');
       if (userIdStr != null) {
          await _fetchUserProfile(int.parse(userIdStr));
@@ -61,8 +58,7 @@ class AuthProvider extends ChangeNotifier {
       await _storage.write(key: 'jwt_token', value: result.accessToken);
       await _storage.write(key: 'user_id', value: result.userId.toString());
       
-      // Start SignalR immediately after login
-      await _signalRService.start(result.accessToken);
+      _signalRService.start();
 
       await _fetchUserProfile(result.userId);
 
@@ -82,8 +78,9 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
     try {
       await _userRepository.createUser(CreateUserRequest(email: email, password: password));
-      // Auto-login after register
-      return await login(email, password);
+      await login(email, password);
+      
+      return true; 
     } catch (e) {
       debugPrint("Registration failed: $e");
       return false;
@@ -93,28 +90,6 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> _fetchUserProfile(int userId) async {
-    try {
-      _currentUser = await _userRepository.getUserById(userId);
-    } catch (e) {
-      debugPrint("Failed to load user profile: $e");
-    }
-  }
-
-  Future<void> logout() async {
-    try {
-      await _apiService.delete(ApiConfig.authLogout);
-    } catch (_) {}
-    
-    await _apiService.clearTokens();
-    await _signalRService.stop(); // Stop SignalR connection
-    
-    _isAuthenticated = false;
-    _currentUser = null;
-    notifyListeners();
-  }
-  
-  // ... updateCredentials and deleteMyAccount methods remain same as original ...
   Future<bool> updateMyCredentials(String email, String password) async {
     if (_currentUser == null) return false;
     _isLoading = true;
@@ -146,5 +121,26 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+
+  Future<void> _fetchUserProfile(int userId) async {
+    try {
+      _currentUser = await _userRepository.getUserById(userId);
+    } catch (e) {
+      debugPrint("Failed to load user profile: $e");
+    }
+  }
+
+  Future<void> logout() async {
+    try {
+      await _apiService.delete(ApiConfig.authLogout);
+    } catch (_) {}
+    
+    await _apiService.clearTokens();
+    await _signalRService.stop();
+    
+    _isAuthenticated = false;
+    _currentUser = null;
+    notifyListeners();
   }
 }

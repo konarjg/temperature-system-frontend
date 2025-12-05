@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../config/app_colors.dart';
 import '../providers/auth_provider.dart';
+import '../main_layout.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,7 +15,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController(); // NEW
+  final _confirmPasswordController = TextEditingController();
   
   bool _isObscure = true;
   bool _isRegistering = false; 
@@ -47,8 +48,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 48),
-                  
-                  // Email
+
                   TextFormField(
                     controller: _emailController,
                     style: const TextStyle(color: AppColors.textPrimary),
@@ -61,7 +61,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 16),
                   
-                  // Password
                   TextFormField(
                     controller: _passwordController,
                     obscureText: _isObscure,
@@ -82,7 +81,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     },
                   ),
                   
-                  // Confirm Password (Only visible in Register mode)
                   if (_isRegistering) ...[
                     const SizedBox(height: 16),
                     TextFormField(
@@ -118,13 +116,35 @@ class _LoginScreenState extends State<LoginScreen> {
                             );
                           }
 
-                          if (!success && context.mounted) {
+                          if (!context.mounted) return;
+
+                          if (!success) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(_isRegistering ? 'Registration Failed' : 'Login Failed'), 
                                 backgroundColor: AppColors.error
                               ),
                             );
+                            return;
+                          }
+
+                          if (authProvider.isAuthenticated) {
+                            Navigator.of(context).pushReplacement(
+                              MaterialPageRoute(builder: (_) => const MainLayout()),
+                            );
+                          } else if (_isRegistering) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Account created! Please check your email to verify.'), 
+                                backgroundColor: Colors.green
+                              ),
+                            );
+
+                            setState(() {
+                              _isRegistering = false;
+                              _passwordController.clear();
+                              _confirmPasswordController.clear();
+                            });
                           }
                         }
                       },
